@@ -8,7 +8,6 @@ using UnityEngine.UI;
 public class Player : MonoBehaviour
 {
 	public Text text;
-	public Tilemap tilemap;
 	public int moveSpeed;
 	// 一方通行の床
 	public GameObject oneWay;
@@ -114,10 +113,6 @@ public class Player : MonoBehaviour
 			default:
 				break;
 		}
-	}
-
-	private void UpdateAnimator(PlayerStatus status, float verticalKey)
-	{
 	}
 
 	private void OnTriggerEnter2D(Collider2D collision)
