@@ -7,6 +7,13 @@ public class Player : MonoBehaviour
 	public int moveSpeed;
 	// 一方通行の床
 	public GameObject oneWay;
+	// 接地しているかどうか
+	public bool isGround = false;
+
+	// プレイヤーの状態を格納
+	PlayerStatus status = PlayerStatus.Idle;
+	// 前回のプレイヤーの状態を格納
+	PlayerStatus preStatus;
 	Rigidbody2D rb;
 	Animator animator;
 	// はしごに触れているかどうか
@@ -17,11 +24,9 @@ public class Player : MonoBehaviour
 	{
 		Idle,
 		Run,
-		Climb
+		Climb,
+		Jump,
 	}
-
-	// プレイヤーの状態を格納
-	PlayerStatus status = PlayerStatus.Idle;
 
 	// Start is called before the first frame update
 	void Start()
@@ -33,7 +38,9 @@ public class Player : MonoBehaviour
 	// Update is called once per frame
 	void Update()
 	{
-		text.text = "isLadder: " + isLadder + "\n" + "status: " + status + "\n";
+		text.text = "isLadder: " + isLadder + "\n"
+			+ "status: " + status + "\n"
+			+ "isGround: " + isGround + "\n";
 
 		float horizontalKey = Input.GetAxisRaw("Horizontal");
 		float verticalKey = Input.GetAxisRaw("Vertical");
@@ -44,12 +51,15 @@ public class Player : MonoBehaviour
 			if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
 			{
 				// はしご昇降中の状態にする
-				status = PlayerStatus.Climb;
+				ChangePlayerStatus(PlayerStatus.Climb);
 			}
 		}
 
 		if (status == PlayerStatus.Climb)
 		{
+			// [↑]または[↓]キー押下の場合はアニメーションを再生する。押下してない場合ばアニメーションを一時停止させる。
+			animator.SetFloat("Speed", verticalKey == 0 ? 0.0f : 1.0f);
+
 			// ハシゴに触れていて昇降中の場合
 			rb.velocity = new Vector2(horizontalKey * moveSpeed, verticalKey * moveSpeed);
 			rb.gravityScale = 0;
@@ -64,24 +74,29 @@ public class Player : MonoBehaviour
 			// 一方通行の床のColliderを有効にする
 			oneWay.GetComponent<BoxCollider2D>().enabled = true;
 
-			if (horizontalKey == 0)
+			// 接地している場合
+			if (isGround)
 			{
-				status = PlayerStatus.Idle;
+				ChangePlayerStatus(horizontalKey == 0 ? PlayerStatus.Idle : PlayerStatus.Run);
+				// ジャンプ
+				float jumpPower = 10.0f;
+				if (Input.GetKeyDown(KeyCode.Space))
+				{
+					rb.velocity = new Vector2(rb.velocity.x, jumpPower);
+				}
 			}
+			// 空中に居る場合
 			else
 			{
-				status = PlayerStatus.Run;
+				if (rb.velocity.y > 0)
+				{
+					ChangePlayerStatus(PlayerStatus.Jump);
+				}
 			}
 
 			// スプライトの反転
-			if (horizontalKey > 0)
-			{
-				transform.localScale = new Vector3(1, 1, 1);
-			}
-			if (horizontalKey < 0)
-			{
-				transform.localScale = new Vector3(-1, 1, 1);
-			}
+			float x = horizontalKey >= 0 ? 1 : -1;
+			transform.localScale = new Vector3(x, 1, 1);
 		}
 
 		// 移動範囲を補正
@@ -91,23 +106,34 @@ public class Player : MonoBehaviour
 			pos.y,
 			pos.z);
 		transform.position = pos;
+	}
 
-		// アニメーション
-		switch (status)
+	void ChangePlayerStatus(PlayerStatus newStatus)
+	{
+		if(newStatus != status)
 		{
-			case PlayerStatus.Idle:
-				animator.SetTrigger("Idle");
-				break;
-			case PlayerStatus.Run:
-				animator.SetTrigger("Run");
-				break;
-			case PlayerStatus.Climb:
-				// ハシゴ昇降中
-				animator.SetTrigger("Climb");
-				animator.SetFloat("Speed", verticalKey == 0 ? 0.0f : 1.0f);
-				break;
-			default:
-				break;
+			preStatus = status;
+			status = newStatus;
+
+			// 状態に応じてアニメーションを更新
+			switch (status)
+			{
+				case PlayerStatus.Idle:
+					animator.SetTrigger("Idle");
+					break;
+				case PlayerStatus.Run:
+					animator.SetTrigger("Run");
+					break;
+				case PlayerStatus.Climb:
+					// ハシゴ昇降中
+					animator.SetTrigger("Climb");
+					break;
+				case PlayerStatus.Jump:
+					animator.SetTrigger("Jump");
+					break;
+				default:
+					break;
+			}
 		}
 	}
 
@@ -131,7 +157,8 @@ public class Player : MonoBehaviour
 		if (collision.gameObject.CompareTag("Ladder"))
 		{
 			isLadder = false;
-			status = PlayerStatus.Idle;
+			ChangePlayerStatus(PlayerStatus.Idle);
+			//status = PlayerStatus.Idle;
 		}
 	}
 }
