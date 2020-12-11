@@ -95,8 +95,14 @@ public class Player : MonoBehaviour
 			}
 
 			// スプライトの反転
-			float x = horizontalKey >= 0 ? 1 : -1;
-			transform.localScale = new Vector3(x, 1, 1);
+			if(horizontalKey > 0)
+			{
+				transform.localScale = new Vector3(1, 1, 1);
+			}
+			if (horizontalKey < 0)
+			{
+				transform.localScale = new Vector3(-1, 1, 1);
+			}
 		}
 
 		// 移動範囲を補正
